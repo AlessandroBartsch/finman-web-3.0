@@ -115,136 +115,134 @@ const Users: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <ArrowClockwise className="w-8 h-8 animate-spin text-primary-600" />
-        <span className="ml-2 text-gray-600">Carregando clientes...</span>
+      <div className="d-flex justify-content-center align-items-center" style={{height: '400px'}}>
+        <div className="text-center">
+          <ArrowClockwise className="spinner-border text-primary mb-3" size={48} />
+          <p className="text-muted">Carregando clientes...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
-      <div className="border-b border-gray-200 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-            <p className="text-gray-600 mt-1">
-              Gerencie seus clientes e informações
-            </p>
-          </div>
-          <button
-            onClick={openModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Cliente
-          </button>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 className="h2 mb-2">Clientes</h1>
+          <p className="text-muted mb-0">
+            Gerencie seus clientes e informações
+          </p>
         </div>
+        <button
+          onClick={openModal}
+          className="btn btn-primary"
+        >
+          <Plus className="me-2" />
+          Novo Cliente
+        </button>
       </div>
 
       {/* Search and Stats */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Buscar clientes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <span>Total: {users.length} clientes</span>
-            <span>Mostrando: {filteredUsers.length}</span>
+      <div className="card mb-4">
+        <div className="card-body">
+          <div className="row align-items-center">
+            <div className="col-md-6">
+              <div className="input-group">
+                <span className="input-group-text">
+                  <Search />
+                </span>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Buscar clientes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="col-md-6 text-end">
+              <span className="text-muted me-3">Total: {users.length} clientes</span>
+              <span className="text-muted">Mostrando: {filteredUsers.length}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Users List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Lista de Clientes</h2>
+      <div className="card">
+        <div className="card-header">
+          <h5 className="card-title mb-0">Lista de Clientes</h5>
         </div>
-        
+
         {filteredUsers.length === 0 ? (
-          <div className="text-center py-12">
-                         <div className="mx-auto h-12 w-12 text-gray-400 flex items-center justify-center">
-               <span className="text-2xl">👥</span>
-             </div>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum cliente encontrado</h3>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="card-body text-center py-5">
+            <div className="mb-3">
+              <span className="display-4">👥</span>
+            </div>
+            <h5>Nenhum cliente encontrado</h5>
+            <p className="text-muted">
               {searchTerm ? 'Tente ajustar os termos de busca.' : 'Comece adicionando seu primeiro cliente.'}
             </p>
             {!searchTerm && (
-              <div className="mt-6">
-                <button
-                  onClick={openModal}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Cliente
-                </button>
-              </div>
+              <button
+                onClick={openModal}
+                className="btn btn-primary"
+              >
+                <Plus className="me-2" />
+                Adicionar Cliente
+              </button>
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="list-group list-group-flush">
             {filteredUsers.map((user) => (
-              <div key={user.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary-700">
-                            {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {user.firstName} {user.lastName}
-                        </p>
-                        <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                                                     {user.phoneNumber && (
-                             <div className="flex items-center">
-                               <Telephone className="w-4 h-4 mr-1" />
-                               <span>{user.phoneNumber}</span>
-                             </div>
-                           )}
-                          {user.address && (
-                            <div className="flex items-center">
-                              <GeoAlt className="w-4 h-4 mr-1" />
-                              <span className="truncate">{user.address}</span>
-                            </div>
-                          )}
-                          {user.dateOfBirth && (
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              <span>{formatDate(user.dateOfBirth)}</span>
-                            </div>
-                          )}
-                        </div>
+              <div key={user.id} className="list-group-item">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
+                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '50px', height: '50px'}}>
+                      <span className="fw-bold">
+                        {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h6 className="mb-1">{user.firstName} {user.lastName}</h6>
+                      <div className="d-flex flex-wrap gap-3 text-muted small">
+                        {user.phoneNumber && (
+                          <div className="d-flex align-items-center">
+                            <Telephone className="me-1" />
+                            <span>{user.phoneNumber}</span>
+                          </div>
+                        )}
+                        {user.address && (
+                          <div className="d-flex align-items-center">
+                            <GeoAlt className="me-1" />
+                            <span>{user.address}</span>
+                          </div>
+                        )}
+                        {user.dateOfBirth && (
+                          <div className="d-flex align-items-center">
+                            <Calendar className="me-1" />
+                            <span>{formatDate(user.dateOfBirth)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="btn-group">
                     <button
                       onClick={() => handleEdit(user)}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                      className="btn btn-outline-primary btn-sm"
                       title="Editar"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil />
                     </button>
                     <button
                       onClick={() => handleDelete(user.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      className="btn btn-outline-danger btn-sm"
                       title="Excluir"
                     >
-                      <Trash className="w-4 h-4" />
+                      <Trash />
                     </button>
                   </div>
                 </div>
@@ -256,107 +254,91 @@ const Users: React.FC = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeModal} />
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {editingUser ? 'Editar Cliente' : 'Novo Cliente'}
-                  </h3>
-                  <button
-                    onClick={closeModal}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nome
-                      </label>
+        <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {editingUser ? 'Editar Cliente' : 'Novo Cliente'}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={closeModal}
+                />
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Nome</label>
                       <input
                         type="text"
+                        className="form-control"
                         required
                         value={formData.firstName}
                         onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Sobrenome
-                      </label>
+                    <div className="col-md-6">
+                      <label className="form-label">Sobrenome</label>
                       <input
                         type="text"
+                        className="form-control"
                         required
                         value={formData.lastName}
                         onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Telefone
-                    </label>
-                                         <input
-                       type="tel"
-                       value={formData.phoneNumber}
-                       onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                     />
+
+                  <div className="mb-3">
+                    <label className="form-label">Telefone</label>
+                    <input
+                      type="tel"
+                      className="form-control"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                    />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Endereço
-                    </label>
+
+                  <div className="mb-3">
+                    <label className="form-label">Endereço</label>
                     <input
                       type="text"
+                      className="form-control"
                       value={formData.address}
                       onChange={(e) => setFormData({...formData, address: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Data de Nascimento
-                    </label>
+
+                  <div className="mb-3">
+                    <label className="form-label">Data de Nascimento</label>
                     <input
                       type="date"
+                      className="form-control"
                       value={formData.dateOfBirth}
                       onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
-                </form>
-              </div>
-              
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="submit"
-                  onClick={handleSubmit}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  {editingUser ? 'Atualizar' : 'Salvar'}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancelar
-                </button>
-              </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={closeModal}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                  >
+                    <Check className="me-2" />
+                    {editingUser ? 'Atualizar' : 'Salvar'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
