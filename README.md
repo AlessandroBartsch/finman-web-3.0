@@ -1,69 +1,114 @@
-# React + TypeScript + Vite
+# FinMan 3.0 - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema de Gerenciamento Financeiro - Interface Web
 
-Currently, two official plugins are available:
+## 🚀 Tecnologias Utilizadas
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19.1.1** - Biblioteca JavaScript para interfaces
+- **TypeScript 5.8.3** - Tipagem estática
+- **Vite 7.1.2** - Build tool e servidor de desenvolvimento
+- **Bootstrap 5.3.7** - Framework CSS para design responsivo
+- **React Bootstrap Icons 1.11.6** - Ícones
+- **React Router DOM 7.8.0** - Roteamento
+- **Axios 1.11.0** - Cliente HTTP para APIs
 
-## Expanding the ESLint configuration
+## 📦 Instalação
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Instalar dependências
+npm install
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Executar em modo desenvolvimento
+npm run dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+# Build para produção
+npm run build
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Preview do build
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🌐 Acesso
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Desenvolvimento:** http://localhost:5173
+- **Backend API:** http://localhost:8080
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 🏗️ Estrutura do Projeto
+
 ```
+src/
+├── components/
+│   └── Layout.tsx          # Layout principal com sidebar
+├── pages/
+│   ├── Dashboard.tsx       # Página inicial com estatísticas
+│   └── Users.tsx          # Gerenciamento de clientes
+├── services/
+│   └── api.ts             # Configuração Axios e serviços
+├── types/
+│   └── index.ts           # Definições TypeScript
+├── App.tsx                # Componente principal
+├── main.tsx              # Ponto de entrada
+└── index.css             # Estilos globais
+```
+
+## ✨ Funcionalidades Implementadas
+
+### 🎯 Dashboard
+- **Cards de Estatísticas** com cores temáticas
+- **Atividades Recentes** com ícones de status
+- **Ações Rápidas** para navegação
+- **Resumo Mensal** com métricas
+
+### 👥 Gerenciamento de Clientes
+- **Listagem** com busca e filtros
+- **Cadastro** de novos clientes
+- **Edição** de informações
+- **Exclusão** com confirmação
+- **Interface responsiva** para mobile
+
+### 🎨 Design System
+- **Bootstrap 5** para componentes
+- **Cores temáticas** (primary, success, info, warning)
+- **Layout responsivo** com sidebar colapsável
+- **Ícones consistentes** do React Bootstrap Icons
+
+## 🔧 Configuração da API
+
+O frontend está configurado para se conectar com o backend Spring Boot na porta 8080. As configurações estão em `src/services/api.ts`:
+
+```typescript
+const API_BASE_URL = 'http://localhost:8080/api';
+```
+
+## 📱 Responsividade
+
+- **Desktop:** Sidebar fixa, layout completo
+- **Tablet:** Cards em grid 2x2
+- **Mobile:** Sidebar colapsável, cards empilhados
+
+## 🎯 Próximas Funcionalidades
+
+- [ ] Página de Empréstimos
+- [ ] Página de Parcelas
+- [ ] Página de Documentos
+- [ ] Autenticação e autorização
+- [ ] Relatórios e gráficos
+- [ ] Notificações em tempo real
+
+## 🚀 Deploy
+
+```bash
+# Build para produção
+npm run build
+
+# Os arquivos estarão em dist/
+# Servir com qualquer servidor estático
+```
+
+## 📄 Licença
+
+Este projeto faz parte do sistema FinMan 3.0 - Sistema de Gerenciamento Financeiro.
+
+---
+
+**Desenvolvido com ❤️ usando React + Bootstrap**
