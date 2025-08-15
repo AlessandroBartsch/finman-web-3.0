@@ -86,6 +86,8 @@ export interface Loan {
   disbursementDate?: string;
   totalPaidAmount: number;
   outstandingBalance: number;
+  totalInterest: number;
+  totalLoanValue: number;
   createdAt: string;
   updatedAt: string;
 }

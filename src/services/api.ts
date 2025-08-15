@@ -103,6 +103,7 @@ export const loanService = {
   approve: (id: number, approvedByUserId: number) => api.put<Loan>(`/loans/${id}/approve`, null, { params: { approvedByUserId } }),
   disburse: (id: number) => api.put<Loan>(`/loans/${id}/disburse`, {}),
   cancel: (id: number) => api.put<Loan>(`/loans/${id}/cancel`, {}),
+  revert: (id: number) => api.put<Loan>(`/loans/${id}/revert`, {}),
   delete: (id: number) => api.delete(`/loans/${id}`)
 };
 

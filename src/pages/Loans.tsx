@@ -100,6 +100,7 @@ const Loans: React.FC = () => {
         loanService.getAll(),
         userService.getAll()
       ]);
+      
       setLoans(loansResponse.data);
       setUsers(usersResponse.data);
     } catch (err) {
@@ -186,6 +187,19 @@ const Loans: React.FC = () => {
     }
   };
 
+  const handleRevertLoan = async (loanId: number) => {
+    if (!window.confirm('Tem certeza que deseja voltar este empréstimo para pendente?')) {
+      return;
+    }
+    
+    try {
+      await loanService.revert(loanId);
+      loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao reverter empréstimo');
+    }
+  };
+
   const handleDeleteLoan = async (loanId: number) => {
     if (!window.confirm('Tem certeza que deseja excluir este empréstimo?')) {
       return;
@@ -224,7 +238,14 @@ const Loans: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    if (!dateString) return '';
+    
+    // Tratar a data como LocalDate (sem timezone)
+    // Dividir a string da data em partes para evitar conversão de timezone
+    const [year, month, day] = dateString.split('T')[0].split('-');
+    
+    // Retornar no formato brasileiro (dd/mm/yyyy)
+    return `${day}/${month}/${year}`;
   };
 
   const formatPercentage = (value: number) => {
@@ -390,14 +411,16 @@ const Loans: React.FC = () => {
                         >
                           <Eye />
                         </Button>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => handleViewInstallments(loan)}
-                          title="Ver parcelas"
-                        >
-                          <FileText />
-                        </Button>
+                        {loan.status !== 'PENDING' && (
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => handleViewInstallments(loan)}
+                            title="Ver parcelas"
+                          >
+                            <FileText />
+                          </Button>
+                        )}
                         {loan.status === 'PENDING' && (
                           <Button
                             variant="outline-info"
@@ -449,12 +472,22 @@ const Loans: React.FC = () => {
                             <CurrencyDollar />
                           </Button>
                         )}
-                        {['PENDING', 'APPROVED'].includes(loan.status) && (
+                        {loan.status === 'PENDING' && (
                           <Button
                             variant="outline-danger"
                             size="sm"
                             onClick={() => handleCancelLoan(loan.id)}
                             title="Cancelar"
+                          >
+                            <XCircle />
+                          </Button>
+                        )}
+                        {loan.status === 'APPROVED' && (
+                          <Button
+                            variant="outline-warning"
+                            size="sm"
+                            onClick={() => handleRevertLoan(loan.id)}
+                            title="Voltar"
                           >
                             <XCircle />
                           </Button>
@@ -868,13 +901,13 @@ const Loans: React.FC = () => {
                       <div className="mb-3">
                         <strong>Total de Juros:</strong>
                         <p className="text-success mb-0">
-                          {formatCurrency(installments.reduce((sum, inst) => sum + inst.interestAmount, 0))}
+                          {formatCurrency(selectedLoan.totalInterest || 0)}
                         </p>
                       </div>
                       <div className="mb-3">
                         <strong>Valor Total do Empréstimo:</strong>
                         <p className="text-info mb-0">
-                          {formatCurrency(installments.reduce((sum, inst) => sum + inst.totalDueAmount, 0))}
+                          {formatCurrency(selectedLoan.totalLoanValue || selectedLoan.loanAmount)}
                         </p>
                       </div>
                     </Col>
