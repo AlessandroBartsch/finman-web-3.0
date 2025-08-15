@@ -65,6 +65,7 @@ src/
 - **Edição** de informações
 - **Exclusão** com confirmação
 - **Interface responsiva** para mobile
+- **Sistema de Documentos** com upload, visualização e download
 
 ### 🎨 Design System
 - **Bootstrap 5** para componentes

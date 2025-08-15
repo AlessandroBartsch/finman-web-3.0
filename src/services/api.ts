@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { User, CreateUserForm } from '../types';
+import type { User, CreateUserForm, Document, DocumentType } from '../types';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -41,6 +41,29 @@ export const userService = {
   create: (user: CreateUserForm) => api.post<User>('/users', user),
   update: (id: number, user: Partial<CreateUserForm>) => api.put<User>(`/users/${id}`, user),
   delete: (id: number) => api.delete(`/users/${id}`),
+};
+
+// Document service
+export const documentService = {
+  getUserDocuments: (userId: number) => api.get<Document[]>(`/documents/user/${userId}`),
+  getUserDocumentsByType: (userId: number, documentType: DocumentType) => 
+    api.get<Document[]>(`/documents/user/${userId}/type/${documentType}`),
+  upload: (userId: number, formData: FormData) => 
+    api.post<string>(`/documents/user/${userId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }),
+  download: (documentId: number) => 
+    api.get(`/documents/${documentId}/download`, { responseType: 'blob' }),
+  view: (documentId: number) => 
+    api.get(`/documents/${documentId}/view`, { responseType: 'blob' }),
+  verify: (documentId: number, verifiedByUserId: number) => 
+    api.put<string>(`/documents/${documentId}/verify`, null, {
+      params: { verifiedByUserId }
+    }),
+  delete: (documentId: number) => 
+    api.delete<string>(`/documents/${documentId}`)
 };
 
 export default api;

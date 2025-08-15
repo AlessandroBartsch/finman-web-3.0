@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { Card, Button, ListGroup, Modal, Form, Alert, Spinner, Tab, Tabs } from 'react-bootstrap';
 import { 
+  Person, 
   Plus, 
-  Search, 
   Pencil, 
   Trash, 
-  Telephone, 
-  GeoAlt, 
-  Calendar,
-  X,
-  Check,
-  ArrowClockwise
+  Search,
+  FileEarmarkText
 } from 'react-bootstrap-icons';
 import { userService } from '../services/api';
 import type { User as UserType, CreateUserForm } from '../types';
+import DocumentManager from '../components/DocumentManager';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState<CreateUserForm>({
     firstName: '',
     lastName: '',
@@ -27,35 +25,52 @@ const Users: React.FC = () => {
     address: '',
     dateOfBirth: ''
   });
+  const [error, setError] = useState<string>('');
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const loadUsers = async () => {
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
       const response = await userService.getAll();
       setUsers(response.data || []);
-    } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
+    } catch (err) {
+      setError('Erro ao carregar usuários');
+      console.error('Erro ao buscar usuários:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!formData.firstName || !formData.lastName) {
+      setError('Nome e sobrenome são obrigatórios');
+      return;
+    }
+
     try {
       if (editingUser) {
         await userService.update(editingUser.id, formData);
       } else {
         await userService.create(formData);
       }
-      await fetchUsers();
-      closeModal();
-    } catch (error) {
-      console.error('Erro ao salvar usuário:', error);
+      
+      setShowModal(false);
+      setEditingUser(null);
+      setFormData({
+        firstName: '',
+        lastName: '',
+        phoneNumber: '',
+        address: '',
+        dateOfBirth: ''
+      });
+      loadUsers();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao salvar usuário');
     }
   };
 
@@ -64,285 +79,239 @@ const Users: React.FC = () => {
     setFormData({
       firstName: user.firstName,
       lastName: user.lastName,
-      phoneNumber: user.phoneNumber || '',
-      address: user.address || '',
-      dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : ''
+      phoneNumber: user.phoneNumber,
+      address: user.address,
+      dateOfBirth: user.dateOfBirth
     });
     setShowModal(true);
   };
 
   const handleDelete = async (userId: number) => {
-    if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
-      try {
-        await userService.delete(userId);
-        await fetchUsers();
-      } catch (error) {
-        console.error('Erro ao excluir usuário:', error);
-      }
+    if (!window.confirm('Tem certeza que deseja excluir este usuário?')) {
+      return;
+    }
+
+    try {
+      await userService.delete(userId);
+      loadUsers();
+    } catch (err) {
+      setError('Erro ao excluir usuário');
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      firstName: '',
-      lastName: '',
-      phoneNumber: '',
-      address: '',
-      dateOfBirth: ''
-    });
-    setEditingUser(null);
-  };
 
-  const openModal = () => {
-    resetForm();
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    resetForm();
-  };
 
   const filteredUsers = users.filter(user =>
-    user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.phoneNumber && user.phoneNumber.includes(searchTerm))
+    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.phoneNumber.includes(searchTerm)
   );
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{height: '400px'}}>
-        <div className="text-center">
-          <ArrowClockwise className="spinner-border text-primary mb-3" size={48} />
-          <p className="text-muted">Carregando clientes...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      {/* Header */}
+    <div className="container-fluid">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="h2 mb-2">Clientes</h1>
-          <p className="text-muted mb-0">
-            Gerencie seus clientes e informações
-          </p>
-        </div>
-        <button
-          onClick={openModal}
-          className="btn btn-primary"
-        >
-          <Plus className="me-2" />
+        <h2>
+          <Person className="me-2" />
+          Clientes
+        </h2>
+        <Button variant="primary" onClick={() => setShowModal(true)}>
+          <Plus className="me-1" />
           Novo Cliente
-        </button>
+        </Button>
       </div>
 
-      {/* Search and Stats */}
-      <div className="card mb-4">
-        <div className="card-body">
-          <div className="row align-items-center">
-            <div className="col-md-6">
-              <div className="input-group">
-                <span className="input-group-text">
-                  <Search />
-                </span>
-                <input
+      {error && <Alert variant="danger">{error}</Alert>}
+
+      <div className="row">
+        <div className="col-md-4">
+          <Card>
+            <Card.Header>
+              <div className="d-flex align-items-center">
+                <Search className="me-2" />
+                <Form.Control
                   type="text"
-                  className="form-control"
                   placeholder="Buscar clientes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-            </div>
-            <div className="col-md-6 text-end">
-              <span className="text-muted me-3">Total: {users.length} clientes</span>
-              <span className="text-muted">Mostrando: {filteredUsers.length}</span>
-            </div>
-          </div>
+            </Card.Header>
+            <Card.Body className="p-0">
+              {loading ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" />
+                </div>
+              ) : (
+                <ListGroup variant="flush">
+                  {filteredUsers.map((user) => (
+                    <ListGroup.Item
+                      key={user.id}
+                      action
+                      active={selectedUser?.id === user.id}
+                      onClick={() => setSelectedUser(user)}
+                      className="d-flex justify-content-between align-items-center"
+                    >
+                      <div>
+                        <strong>{user.fullName}</strong>
+                        <br />
+                        <small className="text-muted">{user.phoneNumber}</small>
+                      </div>
+                      <div className="btn-group btn-group-sm">
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(user);
+                          }}
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(user.id);
+                          }}
+                        >
+                          <Trash />
+                        </Button>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              )}
+            </Card.Body>
+          </Card>
         </div>
-      </div>
 
-      {/* Users List */}
-      <div className="card">
-        <div className="card-header">
-          <h5 className="card-title mb-0">Lista de Clientes</h5>
-        </div>
-
-        {filteredUsers.length === 0 ? (
-          <div className="card-body text-center py-5">
-            <div className="mb-3">
-              <span className="display-4">👥</span>
-            </div>
-            <h5>Nenhum cliente encontrado</h5>
-            <p className="text-muted">
-              {searchTerm ? 'Tente ajustar os termos de busca.' : 'Comece adicionando seu primeiro cliente.'}
-            </p>
-            {!searchTerm && (
-              <button
-                onClick={openModal}
-                className="btn btn-primary"
-              >
-                <Plus className="me-2" />
-                Adicionar Cliente
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="list-group list-group-flush">
-            {filteredUsers.map((user) => (
-              <div key={user.id} className="list-group-item">
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '50px', height: '50px'}}>
-                      <span className="fw-bold">
-                        {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <h6 className="mb-1">{user.firstName} {user.lastName}</h6>
-                      <div className="d-flex flex-wrap gap-3 text-muted small">
-                        {user.phoneNumber && (
-                          <div className="d-flex align-items-center">
-                            <Telephone className="me-1" />
-                            <span>{user.phoneNumber}</span>
-                          </div>
-                        )}
-                        {user.address && (
-                          <div className="d-flex align-items-center">
-                            <GeoAlt className="me-1" />
-                            <span>{user.address}</span>
-                          </div>
-                        )}
-                        {user.dateOfBirth && (
-                          <div className="d-flex align-items-center">
-                            <Calendar className="me-1" />
-                            <span>{formatDate(user.dateOfBirth)}</span>
-                          </div>
-                        )}
+        <div className="col-md-8">
+          {selectedUser ? (
+            <Tabs defaultActiveKey="info" className="mb-3">
+              <Tab eventKey="info" title="Informações">
+                <Card>
+                  <Card.Header>
+                    <h5 className="mb-0">Informações do Cliente</h5>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="row">
+                      <div className="col-md-6">
+                        <p><strong>Nome:</strong> {selectedUser.firstName}</p>
+                        <p><strong>Sobrenome:</strong> {selectedUser.lastName}</p>
+                        <p><strong>Telefone:</strong> {selectedUser.phoneNumber}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <p><strong>Endereço:</strong> {selectedUser.address}</p>
+                        <p><strong>Data de Nascimento:</strong> {new Date(selectedUser.dateOfBirth).toLocaleDateString()}</p>
+                        <p><strong>Cadastrado em:</strong> {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
-                  </div>
-                  <div className="btn-group">
-                    <button
-                      onClick={() => handleEdit(user)}
-                      className="btn btn-outline-primary btn-sm"
-                      title="Editar"
-                    >
-                      <Pencil />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(user.id)}
-                      className="btn btn-outline-danger btn-sm"
-                      title="Excluir"
-                    >
-                      <Trash />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                  </Card.Body>
+                </Card>
+              </Tab>
+              <Tab eventKey="documents" title={
+                <span>
+                  <FileEarmarkText className="me-1" />
+                  Documentos
+                </span>
+              }>
+                <DocumentManager 
+                  userId={selectedUser.id} 
+                  userName={selectedUser.fullName} 
+                />
+              </Tab>
+            </Tabs>
+          ) : (
+            <Card>
+              <Card.Body className="text-center py-5">
+                <Person size={64} className="text-muted mb-3" />
+                <h5>Selecione um cliente</h5>
+                <p className="text-muted">Escolha um cliente da lista para ver suas informações e documentos</p>
+              </Card.Body>
+            </Card>
+          )}
+        </div>
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  {editingUser ? 'Editar Cliente' : 'Novo Cliente'}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={closeModal}
-                />
-              </div>
-              <form onSubmit={handleSubmit}>
-                <div className="modal-body">
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Nome</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        required
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Sobrenome</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        required
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                      />
-                    </div>
-                  </div>
+      {/* Modal para adicionar/editar usuário */}
+      <Modal show={showModal} onHide={() => {
+        setShowModal(false);
+        setEditingUser(null);
+        setFormData({
+          firstName: '',
+          lastName: '',
+          phoneNumber: '',
+          address: '',
+          dateOfBirth: ''
+        });
+      }}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {editingUser ? 'Editar Cliente' : 'Novo Cliente'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Nome *</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                placeholder="Digite o nome"
+              />
+            </Form.Group>
 
-                  <div className="mb-3">
-                    <label className="form-label">Telefone</label>
-                    <input
-                      type="tel"
-                      className="form-control"
-                      value={formData.phoneNumber}
-                      onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                    />
-                  </div>
+            <Form.Group className="mb-3">
+              <Form.Label>Sobrenome *</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                placeholder="Digite o sobrenome"
+              />
+            </Form.Group>
 
-                  <div className="mb-3">
-                    <label className="form-label">Endereço</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={formData.address}
-                      onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    />
-                  </div>
+            <Form.Group className="mb-3">
+              <Form.Label>Telefone</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.phoneNumber}
+                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                placeholder="(11) 99999-9999"
+              />
+            </Form.Group>
 
-                  <div className="mb-3">
-                    <label className="form-label">Data de Nascimento</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={closeModal}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                  >
-                    <Check className="me-2" />
-                    {editingUser ? 'Atualizar' : 'Salvar'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+            <Form.Group className="mb-3">
+              <Form.Label>Endereço</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Digite o endereço completo"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Data de Nascimento</Form.Label>
+              <Form.Control
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleSubmit}>
+            {editingUser ? 'Atualizar' : 'Cadastrar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
