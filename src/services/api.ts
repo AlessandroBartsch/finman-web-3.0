@@ -1,5 +1,16 @@
 import axios from 'axios';
-import type { User, CreateUserForm, Document, DocumentType } from '../types';
+import type { 
+  User, 
+  CreateUserForm, 
+  Document, 
+  DocumentType,
+  Loan,
+  CreateLoanForm,
+  UpdateLoanForm,
+  LoanStatus,
+  LoanInstallment,
+  CreateInstallmentForm
+} from '../types';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -78,6 +89,36 @@ export const dashboardService = {
     approvedLoans: number;
     totalApproved: number;
   }>('/dashboard/stats')
+};
+
+// Loan service
+export const loanService = {
+  getAll: () => api.get<Loan[]>('/loans'),
+  getById: (id: number) => api.get<Loan>(`/loans/${id}`),
+  getByUser: (userId: number) => api.get<Loan[]>(`/loans/user/${userId}`),
+  getByStatus: (status: LoanStatus) => api.get<Loan[]>(`/loans/status/${status}`),
+  simulateInstallments: (id: number) => api.get<LoanInstallment[]>(`/loans/${id}/simulate-installments`),
+  create: (loan: CreateLoanForm) => api.post<Loan>('/loans', loan),
+  update: (id: number, loan: UpdateLoanForm) => api.put<Loan>(`/loans/${id}`, loan),
+  approve: (id: number, approvedByUserId: number) => api.put<Loan>(`/loans/${id}/approve`, null, { params: { approvedByUserId } }),
+  disburse: (id: number) => api.put<Loan>(`/loans/${id}/disburse`, {}),
+  cancel: (id: number) => api.put<Loan>(`/loans/${id}/cancel`, {}),
+  delete: (id: number) => api.delete(`/loans/${id}`)
+};
+
+// Loan Installment service
+export const installmentService = {
+  getAll: () => api.get<LoanInstallment[]>('/installments'),
+  getById: (id: number) => api.get<LoanInstallment>(`/installments/${id}`),
+  getByLoan: (loanId: number) => api.get<LoanInstallment[]>(`/installments/loan/${loanId}`),
+  getOverdue: (loanId: number) => api.get<LoanInstallment[]>(`/installments/loan/${loanId}/overdue`),
+  create: (loanId: number, installment: CreateInstallmentForm) => 
+    api.post<LoanInstallment>(`/installments/loan/${loanId}`, installment),
+  pay: (id: number, amount: number) => 
+    api.put<LoanInstallment>(`/installments/${id}/pay`, null, { params: { amount } }),
+  markAsPaid: (id: number) => 
+    api.put<LoanInstallment>(`/installments/${id}/mark-as-paid`, {}),
+  delete: (id: number) => api.delete(`/installments/${id}`)
 };
 
 export default api;

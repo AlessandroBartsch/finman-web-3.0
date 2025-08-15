@@ -66,6 +66,85 @@ export interface CreateDocumentForm {
   description?: string;
 }
 
+// Loan Types
+export type LoanStatus = 'PENDING' | 'APPROVED' | 'ACTIVE' | 'PAID' | 'DEFAULTED' | 'REJECTED' | 'CANCELLED';
+export type PaymentFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ALTERNATE_DAYS';
+export type PaymentType = 'FIXED_INSTALLMENTS' | 'INTEREST_ONLY' | 'FLEXIBLE';
+
+export interface Loan {
+  id: number;
+  userId: number;
+  loanAmount: number;
+  interestRate: number;
+  termValue: number;
+  paymentFrequency: PaymentFrequency;
+  paymentType: PaymentType;
+  alternateDaysInterval?: number;
+  startDate: string;
+  endDate: string;
+  status: LoanStatus;
+  disbursementDate?: string;
+  totalPaidAmount: number;
+  outstandingBalance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLoanForm {
+  userId: number;
+  loanAmount: number;
+  interestRate: number;
+  termValue: number;
+  paymentFrequency: PaymentFrequency;
+  paymentType: PaymentType;
+  alternateDaysInterval?: number;
+  startDate: string;
+}
+
+export interface UpdateLoanForm {
+  userId?: number;
+  loanAmount?: number;
+  interestRate?: number;
+  termValue?: number;
+  paymentFrequency?: PaymentFrequency;
+  paymentType?: PaymentType;
+  alternateDaysInterval?: number;
+  startDate?: string;
+  status?: LoanStatus;
+  disbursementDate?: string;
+}
+
+// Loan Installment Types
+export interface LoanInstallment {
+  id: number;
+  loanId: number;
+  installmentNumber: number;
+  dueDate: string;
+  principalAmount: number;
+  interestAmount: number;
+  totalDueAmount: number;
+  paidAmount: number;
+  isPaid: boolean;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  amount: number;
+  remainingAmount: number;
+  overdue: boolean;
+}
+
+export interface CreateInstallmentForm {
+  installmentNumber: number;
+  dueDate: string;
+  principalAmount: number;
+  interestAmount: number;
+  totalDueAmount: number;
+}
+
+export interface PaymentForm {
+  amount: number;
+}
+
 // Tipos para API Responses
 export interface ApiResponse<T> {
   data: T;
