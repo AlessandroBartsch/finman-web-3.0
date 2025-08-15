@@ -66,4 +66,18 @@ export const documentService = {
     api.delete<string>(`/documents/${documentId}`)
 };
 
+// Dashboard service
+export const dashboardService = {
+  getStats: () => api.get<{
+    totalUsers: number;
+    activeLoans: number;
+    totalValue: number;
+    totalDocuments: number;
+    paidInstallments: number;
+    overdueInstallments: number;
+    approvedLoans: number;
+    totalApproved: number;
+  }>('/dashboard/stats')
+};
+
 export default api;
