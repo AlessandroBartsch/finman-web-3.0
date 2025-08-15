@@ -431,27 +431,29 @@ const Loans: React.FC = () => {
                             <Calendar />
                           </Button>
                         )}
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedLoan(loan);
-                            setEditForm({
-                              userId: loan.userId,
-                              loanAmount: loan.loanAmount,
-                              interestRate: loan.interestRate,
-                              termValue: loan.termValue,
-                              paymentFrequency: loan.paymentFrequency,
-                              paymentType: loan.paymentType || 'FIXED_INSTALLMENTS',
-                              startDate: loan.startDate,
-                              status: loan.status
-                            });
-                            setShowEditModal(true);
-                          }}
-                          title="Editar"
-                        >
-                          <Pencil />
-                        </Button>
+                        {loan.status === 'PENDING' && (
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedLoan(loan);
+                              setEditForm({
+                                userId: loan.userId,
+                                loanAmount: loan.loanAmount,
+                                interestRate: loan.interestRate,
+                                termValue: loan.termValue,
+                                paymentFrequency: loan.paymentFrequency,
+                                paymentType: loan.paymentType || 'FIXED_INSTALLMENTS',
+                                startDate: loan.startDate,
+                                status: loan.status
+                              });
+                              setShowEditModal(true);
+                            }}
+                            title="Editar"
+                          >
+                            <Pencil />
+                          </Button>
+                        )}
                         {loan.status === 'PENDING' && (
                           <Button
                             variant="outline-success"
