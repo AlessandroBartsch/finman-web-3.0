@@ -100,7 +100,9 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ userId, userName }) =
   const handleDownload = async (document: DocumentModel) => {
     try {
       const response = await documentService.download(document.id);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { 
+        type: document.contentType 
+      }));
       const link = window.document.createElement('a');
       link.href = url;
       link.setAttribute('download', document.originalFileName);
@@ -116,7 +118,9 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ userId, userName }) =
   const handleView = async (document: DocumentModel) => {
     try {
       const response = await documentService.view(document.id);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { 
+        type: document.contentType 
+      }));
       window.open(url, '_blank');
       window.URL.revokeObjectURL(url);
     } catch (err) {
