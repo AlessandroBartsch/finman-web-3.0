@@ -115,6 +115,8 @@ export const installmentService = {
   getOverdue: (loanId: number) => api.get<LoanInstallment[]>(`/installments/loan/${loanId}/overdue`),
   create: (loanId: number, installment: CreateInstallmentForm) => 
     api.post<LoanInstallment>(`/installments/loan/${loanId}`, installment),
+  update: (id: number, installment: Partial<CreateInstallmentForm>) => 
+    api.put<LoanInstallment>(`/installments/${id}`, installment),
   pay: (id: number, amount: number) => 
     api.put<LoanInstallment>(`/installments/${id}/pay`, null, { params: { amount } }),
   markAsPaid: (id: number) => 
