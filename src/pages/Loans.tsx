@@ -48,7 +48,9 @@ const Loans: React.FC = () => {
   const [showInstallmentsModal, setShowInstallmentsModal] = useState(false);
   const [showSimulationModal, setShowSimulationModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [selectedInstallment, setSelectedInstallment] = useState<LoanInstallment | null>(null);
   const [error, setError] = useState<string>('');
   const [activeTab, setActiveTab] = useState('all');
 
@@ -64,6 +66,10 @@ const Loans: React.FC = () => {
 
   const [editForm, setEditForm] = useState<UpdateLoanForm>({
     status: 'PENDING'
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    amount: 0
   });
 
   const statusLabels = {
@@ -197,6 +203,45 @@ const Loans: React.FC = () => {
       loadData();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao reverter empréstimo');
+    }
+  };
+
+  const handlePayInstallment = async () => {
+    if (!selectedInstallment) return;
+    
+    try {
+      await installmentService.pay(selectedInstallment.id, paymentForm.amount);
+      setShowPaymentModal(false);
+      setPaymentForm({ amount: 0 });
+      setSelectedInstallment(null);
+      
+      // Recarregar parcelas se o modal de parcelas estiver aberto
+      if (selectedLoan) {
+        await loadInstallments(selectedLoan.id);
+      }
+      
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao pagar parcela');
+    }
+  };
+
+  const handlePayFullInstallment = async (installment: LoanInstallment) => {
+    if (!window.confirm(`Tem certeza que deseja pagar a parcela ${installment.installmentNumber} completa?`)) {
+      return;
+    }
+    
+    try {
+      await installmentService.markAsPaid(installment.id);
+      
+      // Recarregar parcelas se o modal de parcelas estiver aberto
+      if (selectedLoan) {
+        await loadInstallments(selectedLoan.id);
+      }
+      
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao pagar parcela');
     }
   };
 
@@ -1010,7 +1055,9 @@ const Loans: React.FC = () => {
                   <th>Juros</th>
                   <th>Total</th>
                   <th>Pago</th>
+                  <th>Restante</th>
                   <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -1023,14 +1070,91 @@ const Loans: React.FC = () => {
                     <td>{formatCurrency(installment.totalDueAmount)}</td>
                     <td>{formatCurrency(installment.paidAmount)}</td>
                     <td>
+                      <span className={installment.remainingAmount > 0 ? 'text-danger' : 'text-success'}>
+                        {formatCurrency(installment.remainingAmount)}
+                      </span>
+                    </td>
+                    <td>
                       <Badge bg={installment.isPaid ? 'success' : installment.overdue ? 'danger' : 'warning'}>
                         {installment.isPaid ? 'Pago' : installment.overdue ? 'Vencido' : 'Pendente'}
                       </Badge>
+                    </td>
+                    <td>
+                      {!installment.isPaid && (
+                        <div className="d-flex gap-1">
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            onClick={() => handlePayFullInstallment(installment)}
+                            title="Pagar Parcela Completa"
+                          >
+                            <CheckCircle />
+                          </Button>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedInstallment(installment);
+                              setPaymentForm({ amount: installment.remainingAmount });
+                              setShowPaymentModal(true);
+                            }}
+                            title="Pagar Parcialmente"
+                          >
+                            <CurrencyDollar />
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
+            
+            {/* Resumo Financeiro */}
+            <Card className="mt-4">
+              <Card.Header>
+                <h6 className="mb-0">
+                  <CurrencyDollar className="me-2" />
+                  Resumo Financeiro
+                </h6>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={3}>
+                    <div className="text-center">
+                      <h6 className="text-primary mb-1">
+                        {formatCurrency(installments.reduce((sum, inst) => sum + inst.totalDueAmount, 0))}
+                      </h6>
+                      <small className="text-muted">Total Devido</small>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div className="text-center">
+                      <h6 className="text-success mb-1">
+                        {formatCurrency(installments.reduce((sum, inst) => sum + inst.paidAmount, 0))}
+                      </h6>
+                      <small className="text-muted">Total Pago</small>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div className="text-center">
+                      <h6 className="text-danger mb-1">
+                        {formatCurrency(installments.reduce((sum, inst) => sum + inst.remainingAmount, 0))}
+                      </h6>
+                      <small className="text-muted">Total Restante</small>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div className="text-center">
+                      <h6 className="text-warning mb-1">
+                        {installments.filter(inst => !inst.isPaid).length}
+                      </h6>
+                      <small className="text-muted">Parcelas Pendentes</small>
+                    </div>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
           )}
         </Modal.Body>
         <Modal.Footer>
@@ -1131,6 +1255,83 @@ const Loans: React.FC = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowSimulationModal(false)}>
             Fechar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Payment Modal */}
+      <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Pagar Parcela Parcialmente</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedInstallment && (
+            <>
+              <Card className="mb-3">
+                <Card.Header>
+                  <h6 className="mb-0">
+                    <FileText className="me-2" />
+                    Informações da Parcela {selectedInstallment.installmentNumber}
+                  </h6>
+                </Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <p><strong>Vencimento:</strong> {formatDate(selectedInstallment.dueDate)}</p>
+                      <p><strong>Principal:</strong> {formatCurrency(selectedInstallment.principalAmount)}</p>
+                      <p><strong>Juros:</strong> {formatCurrency(selectedInstallment.interestAmount)}</p>
+                    </Col>
+                    <Col md={6}>
+                      <p><strong>Valor Total:</strong> {formatCurrency(selectedInstallment.totalDueAmount)}</p>
+                      <p><strong>Já Pago:</strong> {formatCurrency(selectedInstallment.paidAmount)}</p>
+                      <p className="text-primary"><strong>Valor Restante:</strong> {formatCurrency(selectedInstallment.remainingAmount)}</p>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+              
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label>Valor a Pagar</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={selectedInstallment.remainingAmount}
+                    value={paymentForm.amount || ''}
+                    onChange={(e) => setPaymentForm(prev => ({ 
+                      ...prev, 
+                      amount: parseFloat(e.target.value) || 0 
+                    }))}
+                    placeholder="0,00"
+                  />
+                  <Form.Text className="text-muted">
+                    Valor máximo: {formatCurrency(selectedInstallment.remainingAmount)}
+                  </Form.Text>
+                </Form.Group>
+                
+                {paymentForm.amount > 0 && (
+                  <Alert variant="info">
+                    <strong>Resumo do Pagamento:</strong><br />
+                    Valor a pagar: {formatCurrency(paymentForm.amount)}<br />
+                    Após o pagamento: {formatCurrency(selectedInstallment.remainingAmount - paymentForm.amount)} restante
+                  </Alert>
+                )}
+              </Form>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            variant="success" 
+            onClick={handlePayInstallment}
+            disabled={!paymentForm.amount || paymentForm.amount <= 0 || paymentForm.amount > (selectedInstallment?.remainingAmount || 0)}
+          >
+            <CurrencyDollar className="me-1" />
+            Confirmar Pagamento
           </Button>
         </Modal.Footer>
       </Modal>
