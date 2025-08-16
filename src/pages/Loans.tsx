@@ -8,8 +8,6 @@ import {
   Alert, 
   Spinner,
   Table,
-  Tabs,
-  Tab,
   Row,
   Col
 } from 'react-bootstrap';
@@ -24,7 +22,9 @@ import {
   Calendar,
   Clock,
   FileText,
-  People
+  People,
+  ExclamationTriangle,
+  Filter
 } from 'react-bootstrap-icons';
 import { loanService, installmentService, userService } from '../services/api';
 import type { 
@@ -52,8 +52,10 @@ const Loans: React.FC = () => {
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [selectedInstallment, setSelectedInstallment] = useState<LoanInstallment | null>(null);
   const [error, setError] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [situationFilter, setSituationFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [warningDays, setWarningDays] = useState<number>(7); // Dias antes do vencimento para aviso
 
   const [createForm, setCreateForm] = useState<CreateLoanForm>({
     userId: 0,
@@ -303,15 +305,41 @@ const Loans: React.FC = () => {
     return user ? `${user.firstName} ${user.lastName}` : 'Cliente não encontrado';
   };
 
+  // Função para verificar a situação das parcelas de um empréstimo
+  const getLoanSituation = (loan: Loan): string => {
+    if (loan.status !== 'ACTIVE') {
+      return 'current'; // Empréstimos não ativos não têm parcelas para verificar
+    }
+
+    // Aqui você precisaria carregar as parcelas do empréstimo
+    // Por enquanto, vamos simular baseado no status
+    const today = new Date();
+    const endDate = new Date(loan.endDate);
+    
+    if (endDate < today) {
+      return 'overdue'; // Empréstimo vencido
+    }
+    
+    const daysUntilEnd = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntilEnd <= warningDays) {
+      return 'warning'; // Próximo ao vencimento
+    }
+    
+    return 'current'; // Em dia
+  };
+
   const filteredLoans = loans.filter(loan => {
     // Filtro por status
-    const statusMatch = activeTab === 'all' || loan.status === activeTab;
+    const statusMatch = statusFilter === 'all' || loan.status === statusFilter;
+    
+    // Filtro por situação das parcelas
+    const situationMatch = situationFilter === 'all' || getLoanSituation(loan) === situationFilter;
     
     // Filtro por nome do cliente
     const clientName = getUserName(loan.userId).toLowerCase();
     const searchMatch = searchTerm === '' || clientName.includes(searchTerm.toLowerCase());
     
-    return statusMatch && searchMatch;
+    return statusMatch && situationMatch && searchMatch;
   });
 
   return (
@@ -343,43 +371,56 @@ const Loans: React.FC = () => {
         </Button>
       </div>
 
-      {/* Tabs */}
-      <Tabs 
-        activeKey={activeTab} 
-        onSelect={(k) => setActiveTab(k || 'all')}
-        className="mb-4"
-      >
-        <Tab eventKey="all" title="Todos">
-          <div className="d-flex align-items-center mb-2">
-            <FileText className="me-2" />
-            <span className="text-muted">Todos os empréstimos</span>
+      {/* Filters */}
+      <div className="mb-4">
+        <div className="row">
+          <div className="col-md-3">
+            <Form.Group>
+              <Form.Label>Status do Empréstimo</Form.Label>
+              <Form.Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">Todos os Status</option>
+                <option value="PENDING">Pendentes</option>
+                <option value="APPROVED">Aprovados</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="PAID">Pagos</option>
+                <option value="DEFAULTED">Inadimplentes</option>
+                <option value="REJECTED">Rejeitados</option>
+                <option value="CANCELLED">Cancelados</option>
+              </Form.Select>
+            </Form.Group>
           </div>
-        </Tab>
-        <Tab eventKey="PENDING" title="Pendentes">
-          <div className="d-flex align-items-center mb-2">
-            <Clock className="me-2" />
-            <span className="text-muted">Aguardando aprovação</span>
+          <div className="col-md-3">
+            <Form.Group>
+              <Form.Label>Situação das Parcelas</Form.Label>
+              <Form.Select
+                value={situationFilter}
+                onChange={(e) => setSituationFilter(e.target.value)}
+              >
+                <option value="all">Todas as Situações</option>
+                <option value="overdue">Com Parcelas em Atraso</option>
+                <option value="current">Em Dia</option>
+                <option value="warning">Próximas ao Vencimento</option>
+              </Form.Select>
+            </Form.Group>
           </div>
-        </Tab>
-        <Tab eventKey="APPROVED" title="Aprovados">
-          <div className="d-flex align-items-center mb-2">
-            <CheckCircle className="me-2" />
-            <span className="text-muted">Aprovados para liberação</span>
-          </div>
-        </Tab>
-        <Tab eventKey="ACTIVE" title="Ativos">
-          <div className="d-flex align-items-center mb-2">
-            <CurrencyDollar className="me-2" />
-            <span className="text-muted">Empréstimos ativos</span>
-          </div>
-        </Tab>
-        <Tab eventKey="PAID" title="Pagos">
-          <div className="d-flex align-items-center mb-2">
-            <CheckCircle className="me-2" />
-            <span className="text-muted">Empréstimos quitados</span>
-          </div>
-        </Tab>
-      </Tabs>
+          <div className="col-md-3">
+            <Form.Group>
+              <Form.Label>Dias para Aviso</Form.Label>
+              <Form.Control
+                type="number"
+                min="1"
+                max="31"
+                value={warningDays}
+                onChange={(e) => setWarningDays(parseInt(e.target.value) || 7)}
+                placeholder="7"
+              />
+            </Form.Group>
+                    </div>
+        </div>
+      </div>
 
       {/* Search Bar */}
       <div className="mb-3">
@@ -421,9 +462,9 @@ const Loans: React.FC = () => {
             <FileText size={48} className="text-muted mb-3" />
             <h5>Nenhum empréstimo encontrado</h5>
             <p className="text-muted">
-              {activeTab === 'all' 
+              {statusFilter === 'all' 
                 ? 'Não há empréstimos cadastrados no sistema.'
-                : `Não há empréstimos com status "${statusLabels[activeTab as LoanStatus]?.label}".`
+                : `Não há empréstimos com status "${statusLabels[statusFilter as LoanStatus]?.label}".`
               }
             </p>
           </Card.Body>
@@ -440,6 +481,7 @@ const Loans: React.FC = () => {
                   <th>Prazo</th>
                   <th>Tipo Pagamento</th>
                   <th>Status</th>
+                  <th>Situação</th>
                   <th>Saldo Devedor</th>
                   <th>Data Início</th>
                   <th>Ações</th>
@@ -471,6 +513,22 @@ const Loans: React.FC = () => {
                       <Badge bg={statusLabels[loan.status].variant}>
                         {statusLabels[loan.status].label}
                       </Badge>
+                    </td>
+                    <td>
+                      {loan.status === 'ACTIVE' && (
+                        <Badge 
+                          bg={
+                            getLoanSituation(loan) === 'overdue' ? 'danger' :
+                            getLoanSituation(loan) === 'warning' ? 'warning' : 'success'
+                          }
+                        >
+                          {getLoanSituation(loan) === 'overdue' ? 'Em Atraso' :
+                           getLoanSituation(loan) === 'warning' ? 'Próximo ao Vencimento' : 'Em Dia'}
+                        </Badge>
+                      )}
+                      {loan.status !== 'ACTIVE' && (
+                        <span className="text-muted">-</span>
+                      )}
                     </td>
                     <td>
                       <span className={loan.outstandingBalance > 0 ? 'text-danger' : 'text-success'}>
@@ -552,7 +610,7 @@ const Loans: React.FC = () => {
                             onClick={() => handleDisburseLoan(loan.id)}
                             title="Liberar"
                           >
-                            <CurrencyDollar />
+                            <CheckCircle />
                           </Button>
                         )}
                         {loan.status === 'PENDING' && (
