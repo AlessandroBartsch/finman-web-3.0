@@ -53,6 +53,7 @@ const Loans: React.FC = () => {
   const [selectedInstallment, setSelectedInstallment] = useState<LoanInstallment | null>(null);
   const [error, setError] = useState<string>('');
   const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   const [createForm, setCreateForm] = useState<CreateLoanForm>({
     userId: 0,
@@ -303,8 +304,14 @@ const Loans: React.FC = () => {
   };
 
   const filteredLoans = loans.filter(loan => {
-    if (activeTab === 'all') return true;
-    return loan.status === activeTab;
+    // Filtro por status
+    const statusMatch = activeTab === 'all' || loan.status === activeTab;
+    
+    // Filtro por nome do cliente
+    const clientName = getUserName(loan.userId).toLowerCase();
+    const searchMatch = searchTerm === '' || clientName.includes(searchTerm.toLowerCase());
+    
+    return statusMatch && searchMatch;
   });
 
   return (
@@ -373,6 +380,35 @@ const Loans: React.FC = () => {
           </div>
         </Tab>
       </Tabs>
+
+      {/* Search Bar */}
+      <div className="mb-3">
+        <div className="row">
+          <div className="col-md-6">
+            <div className="input-group">
+              <span className="input-group-text">
+                <People />
+              </span>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Buscar por nome do cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  className="btn btn-outline-secondary"
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <XCircle />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Loans Table */}
       {loading ? (
