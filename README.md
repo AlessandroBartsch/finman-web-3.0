@@ -74,6 +74,10 @@ src/
 - **Visualização** de parcelas integrada
 - **Simulação** de empréstimos
 - **Controle de status** dos empréstimos
+- **Pagamento de parcelas** (completo ou parcial)
+- **Negociação de atrasos** com comentários
+- **Cálculo automático** de juros de atraso
+- **Informações detalhadas** de parcelas pagas
 
 ### 🎨 Design System
 - **Bootstrap 5** para componentes
@@ -100,6 +104,9 @@ const API_BASE_URL = 'http://localhost:8080/api';
 - [x] Página de Empréstimos
 - [x] Visualização de Parcelas (integrada aos empréstimos)
 - [x] Sistema de Documentos (integrado aos clientes)
+- [x] Pagamento de Parcelas
+- [x] Negociação de Atrasos
+- [x] Informações Detalhadas de Parcelas
 - [ ] Autenticação e autorização
 - [ ] Relatórios e gráficos
 - [ ] Notificações em tempo real

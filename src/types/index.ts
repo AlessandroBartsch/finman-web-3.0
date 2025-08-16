@@ -145,6 +145,13 @@ export interface LoanInstallment {
   amount: number;
   remainingAmount: number;
   overdue: boolean;
+  // Campos para cálculo de atraso
+  dailyInterestRate: number;
+  overdueDays: number;
+  dailyInterestAmount: number;
+  overdueInterestAmount: number;
+  totalWithOverdue: number;
+  negotiationComment?: string;
 }
 
 export interface CreateInstallmentForm {

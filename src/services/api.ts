@@ -97,6 +97,13 @@ export const loanService = {
   getById: (id: number) => api.get<Loan>(`/loans/${id}`),
   getByUser: (userId: number) => api.get<Loan[]>(`/loans/user/${userId}`),
   getByStatus: (status: LoanStatus) => api.get<Loan[]>(`/loans/status/${status}`),
+  getWithFilter: (situation?: string, daysUntilDue?: number) => 
+    api.get<Loan[]>('/loans/filter', { 
+      params: { 
+        situation: situation || 'all',
+        daysUntilDue: daysUntilDue || 7
+      } 
+    }),
   simulateInstallments: (id: number) => api.get<LoanInstallment[]>(`/loans/${id}/simulate-installments`),
   create: (loan: CreateLoanForm) => api.post<Loan>('/loans', loan),
   update: (id: number, loan: UpdateLoanForm) => api.put<Loan>(`/loans/${id}`, loan),
@@ -113,14 +120,29 @@ export const installmentService = {
   getById: (id: number) => api.get<LoanInstallment>(`/installments/${id}`),
   getByLoan: (loanId: number) => api.get<LoanInstallment[]>(`/installments/loan/${loanId}`),
   getOverdue: (loanId: number) => api.get<LoanInstallment[]>(`/installments/loan/${loanId}/overdue`),
+  getWithOverdueCalculation: (loanId: number) => 
+    api.get<LoanInstallment[]>(`/installments/loan/${loanId}/with-overdue-calculation`),
+  getWithOverdueCalculationUntil: (loanId: number, calculateUntilDate: string) => 
+    api.get<LoanInstallment[]>(`/installments/loan/${loanId}/with-overdue-calculation-until`, {
+      params: { calculateUntilDate }
+    }),
   create: (loanId: number, installment: CreateInstallmentForm) => 
     api.post<LoanInstallment>(`/installments/loan/${loanId}`, installment),
   update: (id: number, installment: Partial<CreateInstallmentForm>) => 
     api.put<LoanInstallment>(`/installments/${id}`, installment),
-  pay: (id: number, amount: number) => 
-    api.put<LoanInstallment>(`/installments/${id}/pay`, null, { params: { amount } }),
+  pay: (id: number, amount: number, comment?: string) => 
+    api.put<LoanInstallment>(`/installments/${id}/pay`, null, { 
+      params: { 
+        amount,
+        ...(comment && { comment })
+      } 
+    }),
   markAsPaid: (id: number) => 
     api.put<LoanInstallment>(`/installments/${id}/mark-as-paid`, {}),
+  updateDailyInterestRate: (id: number, dailyInterestRate: number) => 
+    api.put<LoanInstallment>(`/installments/${id}/update-daily-interest-rate`, null, { 
+      params: { dailyInterestRate } 
+    }),
   delete: (id: number) => api.delete(`/installments/${id}`)
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Card, 
   Button, 
@@ -42,6 +42,7 @@ const Loans: React.FC = () => {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [installments, setInstallments] = useState<LoanInstallment[]>([]);
+  const [allInstallments, setAllInstallments] = useState<{ [loanId: number]: LoanInstallment[] }>({});
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -49,13 +50,15 @@ const Loans: React.FC = () => {
   const [showSimulationModal, setShowSimulationModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showNegotiationModal, setShowNegotiationModal] = useState(false);
+  const [showInstallmentInfoModal, setShowInstallmentInfoModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [selectedInstallment, setSelectedInstallment] = useState<LoanInstallment | null>(null);
   const [error, setError] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [situationFilter, setSituationFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [warningDays, setWarningDays] = useState<number>(7); // Dias antes do vencimento para aviso
+  const [daysUntilDue, setDaysUntilDue] = useState<number>(7); // Dias até o vencimento
 
   const [createForm, setCreateForm] = useState<CreateLoanForm>({
     userId: 0,
@@ -73,6 +76,12 @@ const Loans: React.FC = () => {
 
   const [paymentForm, setPaymentForm] = useState({
     amount: 0
+  });
+
+  const [negotiationForm, setNegotiationForm] = useState({
+    dailyInterestRate: 0,
+    finalAmount: 0,
+    comment: ''
   });
 
   const statusLabels = {
@@ -102,16 +111,22 @@ const Loans: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      loadFilteredLoans();
+    }
+  }, [situationFilter, daysUntilDue]);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [loansResponse, usersResponse] = await Promise.all([
-        loanService.getAll(),
+      const [usersResponse] = await Promise.all([
         userService.getAll()
       ]);
-      
-      setLoans(loansResponse.data);
       setUsers(usersResponse.data);
+      
+      // Carregar empréstimos com filtro
+      await loadFilteredLoans();
     } catch (err) {
       setError('Erro ao carregar dados');
       console.error('Erro ao carregar dados:', err);
@@ -120,10 +135,51 @@ const Loans: React.FC = () => {
     }
   };
 
+  const loadFilteredLoans = async () => {
+    try {
+      let loansResponse;
+      
+      if (situationFilter === 'all' && statusFilter === 'all') {
+        loansResponse = await loanService.getAll();
+      } else {
+        loansResponse = await loanService.getWithFilter(
+          situationFilter === 'all' ? undefined : situationFilter,
+          situationFilter === 'approaching' ? daysUntilDue : undefined
+        );
+      }
+      
+      setLoans(loansResponse.data);
+      
+      // Carregar parcelas de todos os empréstimos ativos
+      const installmentsMap: { [loanId: number]: LoanInstallment[] } = {};
+      for (const loan of loansResponse.data) {
+        if (loan.status === 'ACTIVE') {
+          try {
+            const installmentsResponse = await installmentService.getWithOverdueCalculation(loan.id);
+            installmentsMap[loan.id] = installmentsResponse.data;
+          } catch (err) {
+            console.error(`Erro ao carregar parcelas do empréstimo ${loan.id}:`, err);
+            installmentsMap[loan.id] = [];
+          }
+        }
+      }
+      setAllInstallments(installmentsMap);
+    } catch (err) {
+      setError('Erro ao carregar empréstimos');
+      console.error('Erro ao carregar empréstimos:', err);
+    }
+  };
+
   const loadInstallments = async (loanId: number) => {
     try {
-      const response = await installmentService.getByLoan(loanId);
+      const response = await installmentService.getWithOverdueCalculation(loanId);
       setInstallments(response.data);
+      
+      // Atualizar o mapa de parcelas
+      setAllInstallments(prev => ({
+        ...prev,
+        [loanId]: response.data
+      }));
     } catch (err) {
       setError('Erro ao carregar parcelas');
     }
@@ -225,7 +281,11 @@ const Loans: React.FC = () => {
       
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao pagar parcela');
+      if (err.response?.status === 400) {
+        setError('Não é possível pagar parcelas de empréstimos que não estão ativos');
+      } else {
+        setError(err.response?.data?.message || 'Erro ao pagar parcela');
+      }
     }
   };
 
@@ -244,7 +304,98 @@ const Loans: React.FC = () => {
       
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao pagar parcela');
+      if (err.response?.status === 400) {
+        setError('Não é possível pagar parcelas de empréstimos que não estão ativos');
+      } else {
+        setError(err.response?.data?.message || 'Erro ao pagar parcela');
+      }
+    }
+  };
+
+  const handleUpdateDailyInterestRate = async (installmentId: number, dailyInterestRate: number) => {
+    try {
+      await installmentService.updateDailyInterestRate(installmentId, dailyInterestRate);
+      
+      // Recarregar parcelas se o modal de parcelas estiver aberto
+      if (selectedLoan) {
+        await loadInstallments(selectedLoan.id);
+      }
+      
+      setError('');
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        setError('Não é possível alterar taxa de juros de empréstimos que não estão ativos');
+      } else {
+        setError(err.response?.data?.message || 'Erro ao atualizar taxa de juros');
+      }
+    }
+  };
+
+  const handleStartNegotiation = (installment: LoanInstallment) => {
+    setSelectedInstallment(installment);
+    setNegotiationForm({
+      dailyInterestRate: 0, // Campo vazio para o usuário preencher
+      finalAmount: installment.totalWithOverdue,
+      comment: ''
+    });
+    setShowNegotiationModal(true);
+  };
+
+  const handleShowInstallmentInfo = (installment: LoanInstallment) => {
+    setSelectedInstallment(installment);
+    setShowInstallmentInfoModal(true);
+  };
+
+  // Função para calcular o valor final da negociação
+  const calculateFinalAmount = useMemo(() => {
+    if (!selectedInstallment || !negotiationForm.dailyInterestRate) {
+      return selectedInstallment?.totalDueAmount || 0;
+    }
+    
+    const dailyRateDecimal = negotiationForm.dailyInterestRate / 100;
+    const overdueInterestAmount = selectedInstallment.remainingAmount * dailyRateDecimal * selectedInstallment.overdueDays;
+    return selectedInstallment.totalDueAmount + overdueInterestAmount;
+  }, [selectedInstallment, negotiationForm.dailyInterestRate]);
+
+  const handleUpdateNegotiationAmount = () => {
+    if (!selectedInstallment || !negotiationForm.dailyInterestRate) return;
+    
+    const dailyRateDecimal = negotiationForm.dailyInterestRate / 100;
+    const overdueInterestAmount = selectedInstallment.remainingAmount * dailyRateDecimal * selectedInstallment.overdueDays;
+    const finalAmount = selectedInstallment.totalDueAmount + overdueInterestAmount;
+    
+    setNegotiationForm(prev => ({
+      ...prev,
+      finalAmount: finalAmount
+    }));
+  };
+
+  const handleFinalizeNegotiation = async () => {
+    if (!selectedInstallment) return;
+    
+    try {
+      // Primeiro atualiza a taxa de juros diária
+      await installmentService.updateDailyInterestRate(selectedInstallment.id, negotiationForm.dailyInterestRate);
+      
+      // Depois marca como paga com o valor final negociado
+      await installmentService.pay(selectedInstallment.id, calculateFinalAmount, negotiationForm.comment);
+      
+      setShowNegotiationModal(false);
+      setSelectedInstallment(null);
+      setNegotiationForm({ dailyInterestRate: 0, finalAmount: 0, comment: '' });
+      
+      // Recarregar parcelas se o modal de parcelas estiver aberto
+      if (selectedLoan) {
+        await loadInstallments(selectedLoan.id);
+      }
+      
+      setError('');
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        setError('Não é possível negociar parcelas de empréstimos que não estão ativos');
+      } else {
+        setError(err.response?.data?.message || 'Erro ao finalizar negociação');
+      }
     }
   };
 
@@ -311,18 +462,28 @@ const Loans: React.FC = () => {
       return 'current'; // Empréstimos não ativos não têm parcelas para verificar
     }
 
-    // Aqui você precisaria carregar as parcelas do empréstimo
-    // Por enquanto, vamos simular baseado no status
+    const loanInstallments = allInstallments[loan.id] || [];
+    
+    // Verificar se há parcelas vencidas
     const today = new Date();
-    const endDate = new Date(loan.endDate);
-    
-    if (endDate < today) {
-      return 'overdue'; // Empréstimo vencido
+    const hasOverdueInstallments = loanInstallments.some(installment => {
+      const dueDate = new Date(installment.dueDate);
+      return !installment.isPaid && dueDate < today;
+    });
+
+    if (hasOverdueInstallments) {
+      return 'overdue'; // Tem parcelas vencidas
     }
-    
-    const daysUntilEnd = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntilEnd <= warningDays) {
-      return 'warning'; // Próximo ao vencimento
+
+    // Verificar se há parcelas próximas ao vencimento
+    const hasApproachingInstallments = loanInstallments.some(installment => {
+      const dueDate = new Date(installment.dueDate);
+      const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return !installment.isPaid && daysUntilDue <= 7 && daysUntilDue > 0;
+    });
+
+    if (hasApproachingInstallments) {
+      return 'approaching'; // Próximo ao vencimento
     }
     
     return 'current'; // Em dia
@@ -332,14 +493,11 @@ const Loans: React.FC = () => {
     // Filtro por status
     const statusMatch = statusFilter === 'all' || loan.status === statusFilter;
     
-    // Filtro por situação das parcelas
-    const situationMatch = situationFilter === 'all' || getLoanSituation(loan) === situationFilter;
-    
     // Filtro por nome do cliente
     const clientName = getUserName(loan.userId).toLowerCase();
     const searchMatch = searchTerm === '' || clientName.includes(searchTerm.toLowerCase());
     
-    return statusMatch && situationMatch && searchMatch;
+    return statusMatch && searchMatch;
   });
 
   return (
@@ -402,22 +560,24 @@ const Loans: React.FC = () => {
                 <option value="all">Todas as Situações</option>
                 <option value="overdue">Com Parcelas em Atraso</option>
                 <option value="current">Em Dia</option>
-                <option value="warning">Próximas ao Vencimento</option>
+                <option value="approaching">Próximas ao Vencimento</option>
               </Form.Select>
             </Form.Group>
           </div>
           <div className="col-md-3">
-            <Form.Group>
-              <Form.Label>Dias para Aviso</Form.Label>
-              <Form.Control
-                type="number"
-                min="1"
-                max="31"
-                value={warningDays}
-                onChange={(e) => setWarningDays(parseInt(e.target.value) || 7)}
-                placeholder="7"
-              />
-            </Form.Group>
+            {situationFilter === 'approaching' && (
+              <Form.Group>
+                <Form.Label>Dias até o Vencimento</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={daysUntilDue}
+                  onChange={(e) => setDaysUntilDue(parseInt(e.target.value) || 7)}
+                  placeholder="7"
+                />
+              </Form.Group>
+            )}
                     </div>
         </div>
       </div>
@@ -484,6 +644,7 @@ const Loans: React.FC = () => {
                   <th>Situação</th>
                   <th>Saldo Devedor</th>
                   <th>Data Início</th>
+                  <th>Data Criação</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -536,6 +697,16 @@ const Loans: React.FC = () => {
                       </span>
                     </td>
                     <td>{formatDate(loan.startDate)}</td>
+                    <td>
+                      <small className="text-muted">
+                        {new Date(loan.createdAt).toLocaleDateString('pt-BR')}
+                        <br />
+                        {new Date(loan.createdAt).toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </small>
+                    </td>
                     <td>
                       <div className="d-flex gap-1">
                         <Button
@@ -1013,6 +1184,12 @@ const Loans: React.FC = () => {
                         <strong>Total Pago:</strong>
                         <p className="text-muted mb-0">{formatCurrency(selectedLoan.totalPaidAmount)}</p>
                       </div>
+                      {selectedLoan.disbursementDate && (
+                        <div className="mb-3">
+                          <strong>Data de Liberação:</strong>
+                          <p className="text-muted mb-0">{formatDate(selectedLoan.disbursementDate)}</p>
+                        </div>
+                      )}
                     </Col>
                     <Col md={6}>
                       <div className="mb-3">
@@ -1040,6 +1217,16 @@ const Loans: React.FC = () => {
                         <p className="text-muted mb-0">{formatDate(selectedLoan.endDate)}</p>
                       </div>
                       <div className="mb-3">
+                        <strong>Data de Criação:</strong>
+                        <p className="text-muted mb-0">
+                          {new Date(selectedLoan.createdAt).toLocaleDateString('pt-BR')} às{' '}
+                          {new Date(selectedLoan.createdAt).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <div className="mb-3">
                         <strong>Total de Juros:</strong>
                         <p className="text-success mb-0">
                           {formatCurrency(selectedLoan.totalInterest || 0)}
@@ -1053,16 +1240,6 @@ const Loans: React.FC = () => {
                       </div>
                     </Col>
                   </Row>
-                  {selectedLoan.disbursementDate && (
-                    <Row>
-                      <Col md={12}>
-                        <div className="mb-3">
-                          <strong>Data de Liberação:</strong>
-                          <p className="text-muted mb-0">{formatDate(selectedLoan.disbursementDate)}</p>
-                        </div>
-                      </Col>
-                    </Row>
-                  )}
                   
 
                 </Card.Body>
@@ -1152,6 +1329,10 @@ const Loans: React.FC = () => {
                   <th>Pago</th>
                   <th>Restante</th>
                   <th>Status</th>
+                  <th>Juros/Dia</th>
+                  <th>Dias Atraso</th>
+                  <th>Juros Atraso</th>
+                  <th>Total c/ Atraso</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -1174,30 +1355,90 @@ const Loans: React.FC = () => {
                         {installment.isPaid ? 'Pago' : installment.overdue ? 'Vencido' : 'Pendente'}
                       </Badge>
                     </td>
+                    <td>{installment.dailyInterestRate}%</td>
                     <td>
-                      {!installment.isPaid && (
+                      {installment.overdueDays > 0 ? (
+                        <span className="text-danger fw-bold">{installment.overdueDays}</span>
+                      ) : (
+                        <span className="text-muted">0</span>
+                      )}
+                    </td>
+                    <td>
+                      {installment.overdueInterestAmount > 0 ? (
+                        <span className="text-danger fw-bold">
+                          {formatCurrency(installment.overdueInterestAmount)}
+                        </span>
+                      ) : (
+                        <span className="text-muted">{formatCurrency(0)}</span>
+                      )}
+                    </td>
+                    <td>
+                      {installment.totalWithOverdue > installment.totalDueAmount ? (
+                        <span className="text-danger fw-bold">
+                          {formatCurrency(installment.totalWithOverdue)}
+                        </span>
+                      ) : (
+                        <span className="text-muted">{formatCurrency(installment.totalWithOverdue)}</span>
+                      )}
+                    </td>
+                    <td>
+                      {installment.isPaid ? (
                         <div className="d-flex gap-1">
                           <Button
-                            variant="outline-success"
+                            variant="outline-info"
                             size="sm"
-                            onClick={() => handlePayFullInstallment(installment)}
-                            title="Pagar Parcela Completa"
+                            onClick={() => handleShowInstallmentInfo(installment)}
+                            title="Informações da Parcela"
                           >
-                            <CheckCircle />
-                          </Button>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedInstallment(installment);
-                              setPaymentForm({ amount: installment.remainingAmount });
-                              setShowPaymentModal(true);
-                            }}
-                            title="Pagar Parcialmente"
-                          >
-                            <CurrencyDollar />
+                            <Eye />
                           </Button>
                         </div>
+                      ) : (
+                        <>
+                          {selectedLoan && selectedLoan.status === 'ACTIVE' && (
+                            <div className="d-flex gap-1">
+                              {installment.overdue ? (
+                                <Button
+                                  variant="outline-warning"
+                                  size="sm"
+                                  onClick={() => handleStartNegotiation(installment)}
+                                  title="Negociar Atraso"
+                                >
+                                  <ExclamationTriangle className="me-1" />
+                                  Negociar Atraso
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="outline-success"
+                                    size="sm"
+                                    onClick={() => handlePayFullInstallment(installment)}
+                                    title="Pagar Parcela Completa"
+                                  >
+                                    <CheckCircle />
+                                  </Button>
+                                  <Button
+                                    variant="outline-primary"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedInstallment(installment);
+                                      setPaymentForm({ amount: installment.remainingAmount });
+                                      setShowPaymentModal(true);
+                                    }}
+                                    title="Pagar Parcialmente"
+                                  >
+                                    <CurrencyDollar />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                          {selectedLoan && selectedLoan.status !== 'ACTIVE' && (
+                            <div className="text-muted">
+                              <small>Empréstimo não ativo</small>
+                            </div>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>
@@ -1428,6 +1669,255 @@ const Loans: React.FC = () => {
           >
             <CurrencyDollar className="me-1" />
             Confirmar Pagamento
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Negotiation Modal */}
+      <Modal show={showNegotiationModal} onHide={() => setShowNegotiationModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <ExclamationTriangle className="me-2 text-warning" />
+            Negociar Atraso - Parcela {selectedInstallment?.installmentNumber}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedInstallment && (
+            <>
+              <Card className="mb-4">
+                <Card.Header>
+                  <h6 className="mb-0">
+                    <FileText className="me-2" />
+                    Informações da Parcela Vencida
+                  </h6>
+                </Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <p><strong>Vencimento:</strong> {formatDate(selectedInstallment.dueDate)}</p>
+                      <p><strong>Principal:</strong> {formatCurrency(selectedInstallment.principalAmount)}</p>
+                      <p><strong>Juros Originais:</strong> {formatCurrency(selectedInstallment.interestAmount)}</p>
+                      <p><strong>Valor Original:</strong> {formatCurrency(selectedInstallment.totalDueAmount)}</p>
+                    </Col>
+                    <Col md={6}>
+                      <p><strong>Dias em Atraso:</strong> <span className="text-danger fw-bold">{selectedInstallment.overdueDays}</span></p>
+                      <p><strong>Taxa Atual:</strong> {selectedInstallment.dailyInterestRate}% ao dia</p>
+                      <p><strong>Juros de Atraso:</strong> <span className="text-danger">{formatCurrency(selectedInstallment.overdueInterestAmount)}</span></p>
+                      <p><strong>Total com Atraso:</strong> <span className="text-danger fw-bold">{formatCurrency(selectedInstallment.totalWithOverdue)}</span></p>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              <Card className="mb-4">
+                <Card.Header>
+                  <h6 className="mb-0">
+                    <ExclamationTriangle className="me-2" />
+                    Configuração da Negociação
+                  </h6>
+                </Card.Header>
+                <Card.Body>
+                  <Form>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Taxa de Juros Diária (%)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max="100"
+                        value={negotiationForm.dailyInterestRate || ''}
+                        onChange={(e) => {
+                          const newRate = parseFloat(e.target.value) || 0;
+                          setNegotiationForm(prev => ({ ...prev, dailyInterestRate: newRate }));
+                        }}
+                        placeholder="Digite a taxa de juros diária"
+                      />
+                      <Form.Text className="text-muted">
+                        Taxa de juros aplicada por dia de atraso
+                      </Form.Text>
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Comentário da Negociação</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={negotiationForm.comment}
+                        onChange={(e) => {
+                          setNegotiationForm(prev => ({ ...prev, comment: e.target.value }));
+                        }}
+                        placeholder="Ex: Combinei com João que iríamos deixar a taxa em 7% até dia 12..."
+                      />
+                      <Form.Text className="text-muted">
+                        Adicione observações sobre a negociação (opcional)
+                      </Form.Text>
+                    </Form.Group>
+
+                    {negotiationForm.dailyInterestRate > 0 ? (
+                      <Alert variant="info">
+                        <strong>Cálculo do Valor Final:</strong><br />
+                        • Valor Original: {formatCurrency(selectedInstallment.totalDueAmount)}<br />
+                        • Juros de Atraso: {formatCurrency(selectedInstallment.remainingAmount * (negotiationForm.dailyInterestRate / 100) * selectedInstallment.overdueDays)}<br />
+                        • <strong>Total a Pagar: {formatCurrency(calculateFinalAmount)}</strong>
+                      </Alert>
+                    ) : (
+                      <Alert variant="warning">
+                        <strong>Digite uma taxa de juros diária para ver o cálculo</strong>
+                      </Alert>
+                    )}
+                  </Form>
+                </Card.Body>
+              </Card>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowNegotiationModal(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            variant="warning" 
+            onClick={handleFinalizeNegotiation}
+            disabled={!negotiationForm.dailyInterestRate || negotiationForm.dailyInterestRate <= 0}
+          >
+            <CheckCircle className="me-1" />
+            Finalizar Negociação e Pagar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Installment Info Modal */}
+      <Modal show={showInstallmentInfoModal} onHide={() => setShowInstallmentInfoModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FileText className="me-2" />
+            Informações da Parcela {selectedInstallment?.installmentNumber}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedInstallment && (
+            <>
+              <Card className="mb-4">
+                <Card.Header>
+                  <h6 className="mb-0">
+                    <CurrencyDollar className="me-2" />
+                    Informações do Pagamento
+                  </h6>
+                </Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <strong>Vencimento Original:</strong>
+                        <p className="text-muted mb-0">{formatDate(selectedInstallment.dueDate)}</p>
+                      </div>
+                      <div className="mb-3">
+                        <strong>Principal:</strong>
+                        <p className="text-muted mb-0">{formatCurrency(selectedInstallment.principalAmount)}</p>
+                      </div>
+                      <div className="mb-3">
+                        <strong>Juros Originais:</strong>
+                        <p className="text-muted mb-0">{formatCurrency(selectedInstallment.interestAmount)}</p>
+                      </div>
+                      <div className="mb-3">
+                        <strong>Valor Original:</strong>
+                        <p className="text-muted mb-0">{formatCurrency(selectedInstallment.totalDueAmount)}</p>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <strong>Valor Pago:</strong>
+                        <p className="text-success fw-bold mb-0">{formatCurrency(selectedInstallment.paidAmount)}</p>
+                      </div>
+                      <div className="mb-3">
+                        <strong>Data do Pagamento:</strong>
+                        <p className="text-muted mb-0">
+                          {selectedInstallment.paidAt ? formatDate(selectedInstallment.paidAt) : 'Não informada'}
+                        </p>
+                      </div>
+                      <div className="mb-3">
+                        <strong>Status:</strong>
+                        <p className="mb-0">
+                          <Badge bg="success">Pago</Badge>
+                        </p>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              {/* Informações de Negociação (se aplicável) */}
+              {(selectedInstallment.negotiationComment || selectedInstallment.paidAmount > selectedInstallment.totalDueAmount) && (
+                <Card className="mb-4">
+                  <Card.Header>
+                    <h6 className="mb-0">
+                      <ExclamationTriangle className="me-2 text-warning" />
+                      Detalhes da Negociação
+                    </h6>
+                  </Card.Header>
+                  <Card.Body>
+                    {selectedInstallment.paidAmount > selectedInstallment.totalDueAmount && (
+                      <div className="mb-3">
+                        <strong>Pagamento com Atraso:</strong>
+                        <p className="text-warning mb-0">
+                          Esta parcela foi paga com valor adicional de {formatCurrency(selectedInstallment.paidAmount - selectedInstallment.totalDueAmount)} 
+                          devido a atraso na negociação.
+                        </p>
+                      </div>
+                    )}
+                    {selectedInstallment.negotiationComment && (
+                      <div className="mb-3">
+                        <strong>Comentário da Negociação:</strong>
+                        <div className="mt-2 p-3 bg-light rounded">
+                          <p className="mb-0">{selectedInstallment.negotiationComment}</p>
+                        </div>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              )}
+
+              {/* Histórico de Transações (se houver) */}
+              <Card>
+                <Card.Header>
+                  <h6 className="mb-0">
+                    <Clock className="me-2" />
+                    Informações Adicionais
+                  </h6>
+                </Card.Header>
+                <Card.Body>
+                  <div className="mb-3">
+                    <strong>Taxa de Juros Diária:</strong>
+                    <p className="text-muted mb-0">{selectedInstallment.dailyInterestRate}%</p>
+                  </div>
+                  <div className="mb-3">
+                    <strong>Criado em:</strong>
+                    <p className="text-muted mb-0">
+                      {new Date(selectedInstallment.createdAt).toLocaleDateString('pt-BR')} às{' '}
+                      {new Date(selectedInstallment.createdAt).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  <div className="mb-3">
+                    <strong>Última atualização:</strong>
+                    <p className="text-muted mb-0">
+                      {new Date(selectedInstallment.updatedAt).toLocaleDateString('pt-BR')} às{' '}
+                      {new Date(selectedInstallment.updatedAt).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </Card.Body>
+              </Card>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowInstallmentInfoModal(false)}>
+            Fechar
           </Button>
         </Modal.Footer>
       </Modal>
