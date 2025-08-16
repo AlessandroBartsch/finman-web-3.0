@@ -37,6 +37,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ userId, userName }) =
     [DocumentTypes.COMPROVANTE_RENDA]: 'Comprovante de Renda',
     [DocumentTypes.CONTRACHEQUE]: 'Contracheque',
     [DocumentTypes.EXTRATO_BANCARIO]: 'Extrato Bancário',
+    [DocumentTypes.ASSINATURA_PROMISSORIA]: 'Assinatura na Promissória',
     [DocumentTypes.OUTROS]: 'Outros'
   } as const;
 

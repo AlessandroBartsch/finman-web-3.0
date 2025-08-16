@@ -41,7 +41,8 @@ src/
 │   └── Layout.tsx          # Layout principal com sidebar
 ├── pages/
 │   ├── Dashboard.tsx       # Página inicial com estatísticas
-│   └── Users.tsx          # Gerenciamento de clientes
+│   ├── Users.tsx          # Gerenciamento de clientes
+│   └── Loans.tsx          # Gerenciamento de empréstimos
 ├── services/
 │   └── api.ts             # Configuração Axios e serviços
 ├── types/
@@ -61,11 +62,18 @@ src/
 
 ### 👥 Gerenciamento de Clientes
 - **Listagem** com busca e filtros
-- **Cadastro** de novos clientes
-- **Edição** de informações
+- **Cadastro** de novos clientes com informações de indicação
+- **Edição** de informações incluindo situação (ativo/desativado)
 - **Exclusão** com confirmação
 - **Interface responsiva** para mobile
-- **Sistema de Documentos** com upload, visualização e download
+- **Sistema de Documentos** integrado com upload, visualização e download
+- **Controle de situação** com campos condicionais para clientes desativados
+
+### 💰 Gerenciamento de Empréstimos
+- **Listagem** com filtros por status e busca por cliente
+- **Visualização** de parcelas integrada
+- **Simulação** de empréstimos
+- **Controle de status** dos empréstimos
 
 ### 🎨 Design System
 - **Bootstrap 5** para componentes
@@ -89,9 +97,9 @@ const API_BASE_URL = 'http://localhost:8080/api';
 
 ## 🎯 Próximas Funcionalidades
 
-- [ ] Página de Empréstimos
-- [ ] Página de Parcelas
-- [ ] Página de Documentos
+- [x] Página de Empréstimos
+- [x] Visualização de Parcelas (integrada aos empréstimos)
+- [x] Sistema de Documentos (integrado aos clientes)
 - [ ] Autenticação e autorização
 - [ ] Relatórios e gráficos
 - [ ] Notificações em tempo real

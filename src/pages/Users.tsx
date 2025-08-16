@@ -9,7 +9,7 @@ import {
   FileEarmarkText
 } from 'react-bootstrap-icons';
 import { userService } from '../services/api';
-import type { User as UserType, CreateUserForm } from '../types';
+import type { User as UserType, CreateUserForm, UserSituation } from '../types';
 import DocumentManager from '../components/DocumentManager';
 
 const Users: React.FC = () => {
@@ -23,7 +23,9 @@ const Users: React.FC = () => {
     lastName: '',
     phoneNumber: '',
     address: '',
-    dateOfBirth: ''
+    dateOfBirth: '',
+    knownByWhom: '',
+    situation: 'ACTIVE'
   });
   const [error, setError] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
@@ -81,7 +83,11 @@ const Users: React.FC = () => {
       lastName: user.lastName,
       phoneNumber: user.phoneNumber,
       address: user.address,
-      dateOfBirth: user.dateOfBirth
+      dateOfBirth: user.dateOfBirth,
+      knownByWhom: user.knownByWhom || '',
+      situation: user.situation,
+      deactivatedDate: user.deactivatedDate || '',
+      deactivationReason: user.deactivationReason || ''
     });
     setShowModal(true);
   };
@@ -151,8 +157,12 @@ const Users: React.FC = () => {
                       className="d-flex justify-content-between align-items-center"
                     >
                       <div>
-                        <strong>{user.fullName}</strong>
-                        <br />
+                        <div className="d-flex align-items-center">
+                          <strong>{user.fullName}</strong>
+                          <span className={`badge ${user.situation === 'ACTIVE' ? 'bg-success' : 'bg-danger'} ms-2`}>
+                            {user.situation === 'ACTIVE' ? 'Ativo' : 'Desativado'}
+                          </span>
+                        </div>
                         <small className="text-muted">{user.phoneNumber}</small>
                       </div>
                       <div className="btn-group btn-group-sm">
@@ -199,11 +209,23 @@ const Users: React.FC = () => {
                         <p><strong>Nome:</strong> {selectedUser.firstName}</p>
                         <p><strong>Sobrenome:</strong> {selectedUser.lastName}</p>
                         <p><strong>Telefone:</strong> {selectedUser.phoneNumber}</p>
+                        <p><strong>Conhecido de:</strong> {selectedUser.knownByWhom || 'Não informado'}</p>
+                        <p><strong>Situação:</strong> 
+                          <span className={`badge ${selectedUser.situation === 'ACTIVE' ? 'bg-success' : 'bg-danger'} ms-2`}>
+                            {selectedUser.situation === 'ACTIVE' ? 'Ativo' : 'Desativado'}
+                          </span>
+                        </p>
                       </div>
                       <div className="col-md-6">
                         <p><strong>Endereço:</strong> {selectedUser.address}</p>
                         <p><strong>Data de Nascimento:</strong> {new Date(selectedUser.dateOfBirth).toLocaleDateString()}</p>
                         <p><strong>Cadastrado em:</strong> {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+                        {selectedUser.situation === 'DEACTIVATED' && (
+                          <>
+                            <p><strong>Desativado em:</strong> {selectedUser.deactivatedDate ? new Date(selectedUser.deactivatedDate).toLocaleDateString() : 'Não informado'}</p>
+                            <p><strong>Motivo:</strong> {selectedUser.deactivationReason || 'Não informado'}</p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card.Body>
@@ -242,7 +264,9 @@ const Users: React.FC = () => {
           lastName: '',
           phoneNumber: '',
           address: '',
-          dateOfBirth: ''
+          dateOfBirth: '',
+          knownByWhom: '',
+          situation: 'ACTIVE'
         });
       }}>
         <Modal.Header closeButton>
@@ -301,6 +325,51 @@ const Users: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
               />
             </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Conhecido de Quem</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.knownByWhom || ''}
+                onChange={(e) => setFormData({ ...formData, knownByWhom: e.target.value })}
+                placeholder="Nome da pessoa que indicou este cliente"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Situação</Form.Label>
+              <Form.Select
+                value={formData.situation || 'ACTIVE'}
+                onChange={(e) => setFormData({ ...formData, situation: e.target.value as UserSituation })}
+              >
+                <option value="ACTIVE">Ativo</option>
+                <option value="DEACTIVATED">Desativado</option>
+              </Form.Select>
+            </Form.Group>
+
+            {formData.situation === 'DEACTIVATED' && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Data de Desativação</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={formData.deactivatedDate || ''}
+                    onChange={(e) => setFormData({ ...formData, deactivatedDate: e.target.value })}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Motivo da Desativação</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={formData.deactivationReason || ''}
+                    onChange={(e) => setFormData({ ...formData, deactivationReason: e.target.value })}
+                    placeholder="Descreva o motivo da desativação"
+                  />
+                </Form.Group>
+              </>
+            )}
           </Form>
         </Modal.Body>
         <Modal.Footer>

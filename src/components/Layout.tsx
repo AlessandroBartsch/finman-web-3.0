@@ -5,7 +5,6 @@ import {
   People, 
   FileText, 
   BarChart, 
-  Folder2Open,
   List,
   Building
 } from 'react-bootstrap-icons';
@@ -22,7 +21,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Dashboard', href: '/', icon: House },
     { name: 'Clientes', href: '/users', icon: People },
     { name: 'Empréstimos', href: '/loans', icon: FileText },
-    { name: 'Documentos', href: '/documents', icon: Folder2Open },
   ];
 
   const isActive = (href: string) => {

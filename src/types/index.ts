@@ -1,4 +1,6 @@
 // Tipos para Usuários/Clientes
+export type UserSituation = 'ACTIVE' | 'DEACTIVATED';
+
 export interface User {
   id: number;
   firstName: string;
@@ -6,6 +8,10 @@ export interface User {
   phoneNumber: string;
   address: string;
   dateOfBirth: string;
+  knownByWhom?: string;
+  situation: UserSituation;
+  deactivatedDate?: string;
+  deactivationReason?: string;
   createdAt: string;
   updatedAt: string;
   fullName: string;
@@ -18,6 +24,10 @@ export interface CreateUserForm {
   phoneNumber: string;
   address: string;
   dateOfBirth: string;
+  knownByWhom?: string;
+  situation?: UserSituation;
+  deactivatedDate?: string;
+  deactivationReason?: string;
 }
 
 export interface UpdateUserForm extends CreateUserForm {
@@ -32,6 +42,7 @@ export type DocumentType =
   | 'COMPROVANTE_RENDA'
   | 'CONTRACHEQUE'
   | 'EXTRATO_BANCARIO'
+  | 'ASSINATURA_PROMISSORIA'
   | 'OUTROS';
 
 export const DocumentTypes = {
@@ -41,6 +52,7 @@ export const DocumentTypes = {
   COMPROVANTE_RENDA: 'COMPROVANTE_RENDA' as DocumentType,
   CONTRACHEQUE: 'CONTRACHEQUE' as DocumentType,
   EXTRATO_BANCARIO: 'EXTRATO_BANCARIO' as DocumentType,
+  ASSINATURA_PROMISSORIA: 'ASSINATURA_PROMISSORIA' as DocumentType,
   OUTROS: 'OUTROS' as DocumentType
 } as const;
 
