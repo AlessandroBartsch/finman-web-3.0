@@ -1046,7 +1046,8 @@ const Loans: React.FC = () => {
               <p>Nenhuma parcela encontrada para este empréstimo.</p>
             </div>
           ) : (
-            <Table responsive>
+            <>
+              <Table responsive>
               <thead>
                 <tr>
                   <th>Parcela</th>
@@ -1155,6 +1156,7 @@ const Loans: React.FC = () => {
                 </Row>
               </Card.Body>
             </Card>
+            </>
           )}
         </Modal.Body>
         <Modal.Footer>
