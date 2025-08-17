@@ -1847,7 +1847,7 @@ const Loans: React.FC = () => {
               </Card>
 
               {/* Informações de Negociação (se aplicável) */}
-              {(selectedInstallment.negotiationComment || selectedInstallment.paidAmount > selectedInstallment.totalDueAmount) && (
+              {(selectedInstallment.negotiationComment || (selectedInstallment.overdueInterestPaid && selectedInstallment.overdueInterestPaid > 0)) && (
                 <Card className="mb-4">
                   <Card.Header>
                     <h6 className="mb-0">
@@ -1856,12 +1856,12 @@ const Loans: React.FC = () => {
                     </h6>
                   </Card.Header>
                   <Card.Body>
-                    {selectedInstallment.paidAmount > selectedInstallment.totalDueAmount && (
+                    {selectedInstallment.overdueInterestPaid && selectedInstallment.overdueInterestPaid > 0 && (
                       <div className="mb-3">
-                        <strong>Pagamento com Atraso:</strong>
-                        <p className="text-warning mb-0">
-                          Esta parcela foi paga com valor adicional de {formatCurrency(selectedInstallment.paidAmount - selectedInstallment.totalDueAmount)} 
-                          devido a atraso na negociação.
+                        <strong>Excedente de Juros de Atraso:</strong>
+                        <p className="text-info mb-0">
+                          Esta parcela foi paga com excedente de {formatCurrency(selectedInstallment.overdueInterestPaid)} 
+                          em juros de atraso.
                         </p>
                       </div>
                     )}
@@ -1890,6 +1890,12 @@ const Loans: React.FC = () => {
                     <strong>Taxa de Juros Diária:</strong>
                     <p className="text-muted mb-0">{selectedInstallment.dailyInterestRate}%</p>
                   </div>
+                  {selectedInstallment.overdueInterestPaid && selectedInstallment.overdueInterestPaid > 0 && (
+                    <div className="mb-3">
+                      <strong>Excedente de Juros Pagos:</strong>
+                      <p className="text-info mb-0">{formatCurrency(selectedInstallment.overdueInterestPaid)}</p>
+                    </div>
+                  )}
                   <div className="mb-3">
                     <strong>Criado em:</strong>
                     <p className="text-muted mb-0">

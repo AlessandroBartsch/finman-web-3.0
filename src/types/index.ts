@@ -152,6 +152,7 @@ export interface LoanInstallment {
   overdueInterestAmount: number;
   totalWithOverdue: number;
   negotiationComment?: string;
+  overdueInterestPaid?: number;
 }
 
 export interface CreateInstallmentForm {

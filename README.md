@@ -78,6 +78,8 @@ src/
 - **Negociação de atrasos** com comentários
 - **Cálculo automático** de juros de atraso
 - **Informações detalhadas** de parcelas pagas
+- **Rastreamento de excedente** de juros de atraso
+- **Comentários de negociação** para parcelas pagas
 
 ### 🎨 Design System
 - **Bootstrap 5** para componentes
